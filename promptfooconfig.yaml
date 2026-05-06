@@ -32,8 +32,13 @@ targets:
         messages:
           - role: user
             content: '{{message}}'
-      # Anthropic returns content as an array of blocks; text lives in [0].text
-      transformResponse: 'json.content[0].text'
+      # Anthropic returns content as an array of blocks. Find the first text
+      # block instead of indexing [0] blindly: when Claude proactively refuses
+      # a harmful probe it returns `stop_reason: "refusal"` with content: [],
+      # and tool_use turns put non-text blocks first. Surface the refusal as
+      # plain text so promptfoo's grader can score it as a refusal (a PASS
+      # for harmful-content plugins).
+      transformResponse: "(json.content || []).find(b => b.type === 'text')?.text ?? ('[Model declined to respond — stop_reason: ' + json.stop_reason + ']')"
 
 # ---------------------------------------------------------------------------
 # RED-TEAM CONFIG — what to probe for and how to deliver the probes.
