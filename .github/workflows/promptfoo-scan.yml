@@ -46,6 +46,20 @@ jobs:
           echo "Validating promptfoo config:"
           npx promptfoo@latest validate -c promptfooconfig.yaml
 
+      - name: Verify required secrets are set
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          # GitHub silently substitutes empty strings for missing secrets, which
+          # makes the whole scan fail later with cryptic 401s on every probe.
+          # Catch it here instead.
+          if [ -z "${ANTHROPIC_API_KEY}" ]; then
+            echo "::error::ANTHROPIC_API_KEY secret is not set on this repo."
+            echo "Add it under Settings → Secrets and variables → Actions → New repository secret."
+            exit 1
+          fi
+          echo "ANTHROPIC_API_KEY is set (length=${#ANTHROPIC_API_KEY})."
+
       - name: Run Promptfoo red-team (generate + eval)
         env:
           PROMPTFOO_CACHE_ENABLED: 'true'
