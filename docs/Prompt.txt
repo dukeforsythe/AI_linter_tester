@@ -1,0 +1,22 @@
+Build an app called "New Hire IT Onboarding Request" for our IT team in Jira.
+Who uses it: Hiring managers (the requester) and IT support agents (the fulfillers).
+The form should collect:
+
+New hire's full name, email, and start date
+Department (dropdown: Engineering, Sales, Marketing, Operations, Finance, HR)
+Office location (dropdown: Seattle, Austin, Remote)
+Laptop type (radio: MacBook Pro 14", MacBook Pro 16", ThinkPad X1)
+Required software (multi-select with options like Figma, Adobe CC, Salesforce, plus an "Other" text field)
+Access groups needed (multi-select tied to our existing groups)
+Manager name (lookup against active Jira users)
+Special equipment notes (long text, optional)
+
+Behavior:
+
+Hide the "Office location" field if the department is Engineering and auto-set it to "Remote"
+Require justification text if more than 3 software items are selected
+On submit, create a Jira issue in the IT-OPS project with type "Service Request", set the reporter to the submitter, assign to the IT triage queue, and set due date to 3 business days before the start date
+If start date is less than 5 business days away, flag the issue with a "Rush" label and notify the #it-onboarding Slack channel
+
+Dashboard view for IT agents showing: open requests grouped by start-date week, count of rush requests this week, and average time-to-fulfillment over the last 30 days.
+Permissions: Anyone in the org can submit; only IT agents can see the dashboard.

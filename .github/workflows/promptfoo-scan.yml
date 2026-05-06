@@ -3,6 +3,9 @@ name: Promptfoo Security Scan
 on:
   push:
     branches: [main]        # run only on pushes to main
+    paths:                  # …and only when these files change
+      - 'docs/**/*.txt'
+      - 'docs/**/*.doc'
   workflow_dispatch:        # allow manual runs from the Actions tab
 
 jobs:
