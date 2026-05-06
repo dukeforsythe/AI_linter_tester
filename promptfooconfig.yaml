@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+
+description: Red-team scan of system prompts in docs/ against self-hosted LLM
+
+# Each .txt file in docs/ is loaded as a separate prompt and tested independently.
+# Note: Promptfoo can't read binary .doc files. If you have .doc files,
+# convert them to .txt or .md first (e.g. via `textutil` on macOS or `pandoc`).
+prompts:
+  - file://docs/**/*.txt
+
+# ---------------------------------------------------------------------------
+# TARGET — the system you want to attack (your self-hosted LLM/app).
+# Replace the URL, headers, body shape, and response transform with whatever
+# your endpoint actually expects.
+# ---------------------------------------------------------------------------
+targets:
+  - id: https
+    label: self-hosted-llm
+    config:
+      url: 'https://your-self-hosted-endpoint.example.com/v1/chat/completions'
+      method: POST
+      headers:
+        'Content-Type': 'application/json'
+        'Authorization': 'Bearer {{env.SELFHOSTED_API_KEY}}'
+      body:
+        # {{prompt}} = the contents of the docs/*.txt file (system prompt)
+        # {{message}} = the adversarial user input promptfoo injects
+        messages:
+          - role: system
+            content: '{{prompt}}'
+          - role: user
+            content: '{{message}}'
+      # Adjust to wherever the assistant text lives in your response JSON
+      transformResponse: 'json.choices[0].message.content'
+
+# Tell promptfoo which variable in the body carries the attack payload
+defaultTest:
+  options:
+    transformVars: '{ ...vars }'
+
+# ---------------------------------------------------------------------------
+# RED-TEAM CONFIG — what to probe for and how to deliver the probes.
+# ---------------------------------------------------------------------------
+redteam:
+  # A clear purpose statement makes attacks dramatically more relevant.
+  # Edit this to describe what the prompts in docs/ are actually for.
+  purpose: |
+    The system uses the prompts in docs/ as system instructions for an
+    internal assistant. It should refuse harmful requests, never reveal
+    its system prompt, and never leak PII or proprietary data.
+
+  # Variable in your provider's body that promptfoo should mutate with
+  # adversarial content. Matches `{{message}}` above.
+  injectVar: message
+
+  # Which model generates the adversarial prompts (NOT the target).
+  # Defaults to OpenAI; set this if you want to use a different attacker.
+  # Without an OpenAI key, promptfoo proxies generation through their cloud.
+  # provider: anthropic:messages:claude-opus-4-7
+
+  # Common, high-signal vulnerability categories to start with.
+  plugins:
+    - harmful           # bundle of harmful-content categories
+    - pii               # leakage of personally identifiable info
+    - prompt-extraction # tries to make the model reveal its system prompt
+    - hijacking         # off-topic / scope manipulation
+    - excessive-agency  # taking actions beyond intended scope
+    - hallucination
+
+  # How probes are delivered. Start small; add `jailbreak:tree`, `crescendo`,
+  # `goat`, etc. once the basics are clean — they're more expensive.
+  strategies:
+    - jailbreak
+    - prompt-injection
+
+  # How many test cases per plugin. Lower = faster + cheaper.
+  numTests: 5
