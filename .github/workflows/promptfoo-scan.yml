@@ -35,23 +35,40 @@ jobs:
           restore-keys: |
             promptfoo-${{ runner.os }}-
 
-      - name: Run Promptfoo scan
-        uses: promptfoo/promptfoo-action@v1
+      - name: Sanity-check that prompts are being discovered
+        run: |
+          echo "Files matching docs/**/*.txt:"
+          find docs -type f -name '*.txt' | tee /tmp/found_prompts.txt
+          if [ ! -s /tmp/found_prompts.txt ]; then
+            echo "::error::No .txt prompt files found under docs/. Nothing to scan."
+            exit 1
+          fi
+          echo "Validating promptfoo config:"
+          npx promptfoo@latest validate -c promptfooconfig.yaml
+
+      - name: Run Promptfoo red-team (generate + eval)
         env:
           PROMPTFOO_CACHE_ENABLED: 'true'
           PROMPTFOO_CACHE_TYPE: 'disk'
           PROMPTFOO_CACHE_PATH: ~/.cache/promptfoo
-        with:
-          type: 'redteam'                               # red-team / vulnerability scan
-          config: 'promptfooconfig.yaml'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Provider creds — pass whichever you actually use; remove the rest:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Optional: gate the build on a minimum pass rate (0–100)
-          fail-on-threshold: 80
-          no-progress-bar: true
-          no-table: true
+          # Provider creds — keep whichever you actually use:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Creds for the self-hosted target endpoint (if it requires auth):
+          SELFHOSTED_API_KEY: ${{ secrets.SELFHOSTED_API_KEY }}
+        run: |
+          # `redteam run` = generate adversarial tests + evaluate them.
+          # Using the action's `type: redteam` only runs eval, which is why
+          # you saw "No tests were run" — there was no redteam.yaml yet.
+          npx promptfoo@latest redteam run \
+            --config promptfooconfig.yaml \
+            --output output.json \
+            --no-progress-bar \
+            --no-table
+
+      - name: Generate HTML report
+        if: always()
+        run: npx promptfoo@latest redteam report --output redteam-report.html || true
 
       - name: Upload scan artifacts
         if: always()
