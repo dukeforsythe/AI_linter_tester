@@ -9,29 +9,31 @@ prompts:
   - file://docs/**/*.txt
 
 # ---------------------------------------------------------------------------
-# TARGET — the system you want to attack (your self-hosted LLM/app).
-# Replace the URL, headers, body shape, and response transform with whatever
-# your endpoint actually expects.
+# TARGET — Anthropic's Claude API.
+# The docs/*.txt file is sent as the system prompt; promptfoo's adversarial
+# {{message}} is sent as the user turn.
 # ---------------------------------------------------------------------------
 targets:
   - id: https
-    label: self-hosted-llm
+    label: claude-sonnet-4-6
     config:
-      url: 'https://your-self-hosted-endpoint.example.com/v1/chat/completions'
+      url: 'https://api.anthropic.com/v1/messages'
       method: POST
       headers:
         'Content-Type': 'application/json'
-        'Authorization': 'Bearer {{env.SELFHOSTED_API_KEY}}'
+        'x-api-key': '{{env.ANTHROPIC_API_KEY}}'
+        'anthropic-version': '2023-06-01'
       body:
+        model: 'claude-sonnet-4-6'
+        max_tokens: 1024
         # {{prompt}} = the contents of the docs/*.txt file (system prompt)
         # {{message}} = the adversarial user input promptfoo injects
+        system: '{{prompt}}'
         messages:
-          - role: system
-            content: '{{prompt}}'
           - role: user
             content: '{{message}}'
-      # Adjust to wherever the assistant text lives in your response JSON
-      transformResponse: 'json.choices[0].message.content'
+      # Anthropic returns content as an array of blocks; text lives in [0].text
+      transformResponse: 'json.content[0].text'
 
 # ---------------------------------------------------------------------------
 # RED-TEAM CONFIG — what to probe for and how to deliver the probes.

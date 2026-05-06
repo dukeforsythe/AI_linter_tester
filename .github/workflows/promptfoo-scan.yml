@@ -51,20 +51,21 @@ jobs:
           PROMPTFOO_CACHE_ENABLED: 'true'
           PROMPTFOO_CACHE_TYPE: 'disk'
           PROMPTFOO_CACHE_PATH: ~/.cache/promptfoo
-          # Provider creds — keep whichever you actually use:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          # Target creds — Claude is the system under test.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # Creds for the self-hosted target endpoint (if it requires auth):
-          SELFHOSTED_API_KEY: ${{ secrets.SELFHOSTED_API_KEY }}
+          # Attacker creds — used by promptfoo to GENERATE adversarial probes.
+          # Defaults to OpenAI; remove this and uncomment `redteam.provider`
+          # in promptfooconfig.yaml to use Claude as the attacker instead.
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # `redteam run` = generate adversarial tests + evaluate them.
-          # Using the action's `type: redteam` only runs eval, which is why
-          # you saw "No tests were run" — there was no redteam.yaml yet.
+          # NOTE: --output here writes the GENERATED PROBE FILE (redteam.yaml-
+          # style), not the eval results. Eval results are cached by promptfoo
+          # and consumed by the `redteam report` step below.
           npx promptfoo@latest redteam run \
             --config promptfooconfig.yaml \
-            --output output.json \
-            --no-progress-bar \
-            --no-table
+            --output redteam.generated.yaml \
+            --no-progress-bar
 
       - name: Generate HTML report
         if: always()
@@ -76,6 +77,6 @@ jobs:
         with:
           name: promptfoo-results
           path: |
-            output.json
+            redteam.generated.yaml
             redteam-report.html
           if-no-files-found: ignore
