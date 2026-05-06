@@ -2,7 +2,7 @@ name: Promptfoo Security Scan
 
 on:
   push:
-    branches: [main]        # run only on pushes to main
+    branches: [master]        # run only on pushes to main
     paths:                  # …and only when these files change
       - 'docs/**/*.txt'
       - 'docs/**/*.doc'
