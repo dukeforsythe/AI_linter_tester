@@ -33,11 +33,6 @@ targets:
       # Adjust to wherever the assistant text lives in your response JSON
       transformResponse: 'json.choices[0].message.content'
 
-# Tell promptfoo which variable in the body carries the attack payload
-defaultTest:
-  options:
-    transformVars: '{ ...vars }'
-
 # ---------------------------------------------------------------------------
 # RED-TEAM CONFIG — what to probe for and how to deliver the probes.
 # ---------------------------------------------------------------------------
