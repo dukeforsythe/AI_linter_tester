@@ -1,0 +1,61 @@
+name: Promptfoo Security Scan
+
+on:
+  push:
+    branches: [main]        # run only on pushes to main
+  workflow_dispatch:        # allow manual runs from the Actions tab
+
+jobs:
+  redteam-scan:
+    name: Promptfoo red-team scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # needed if the action posts comments on related PRs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # full history so before/after diffing works
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache promptfoo runs
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/promptfoo
+          key: promptfoo-${{ runner.os }}-${{ hashFiles('promptfooconfig.yaml', 'prompts/**') }}
+          restore-keys: |
+            promptfoo-${{ runner.os }}-
+
+      - name: Run Promptfoo scan
+        uses: promptfoo/promptfoo-action@v1
+        env:
+          PROMPTFOO_CACHE_ENABLED: 'true'
+          PROMPTFOO_CACHE_TYPE: 'disk'
+          PROMPTFOO_CACHE_PATH: ~/.cache/promptfoo
+        with:
+          type: 'redteam'                               # red-team / vulnerability scan
+          config: 'promptfooconfig.yaml'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Provider creds — pass whichever you actually use; remove the rest:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Optional: gate the build on a minimum pass rate (0–100)
+          fail-on-threshold: 80
+          no-progress-bar: true
+          no-table: true
+
+      - name: Upload scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promptfoo-results
+          path: |
+            output.json
+            redteam-report.html
+          if-no-files-found: ignore
